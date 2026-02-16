@@ -12,17 +12,24 @@ export async function getUserFromSession() {
     const token = cookieStore.get('token')?.value;
 
     if (!token) {
+        console.log("Auth Debug: No token found in cookies");
         return null;
     }
 
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
-        if (!payload.userId) return null;
+        // console.log("Auth Debug: Token verified for user", payload.userId);
+        if (!payload.userId) {
+            console.log("Auth Debug: Token missing userId");
+            return null;
+        }
 
         await dbConnect();
         const user = await User.findById(payload.userId).select('-password');
+        if (!user) console.log("Auth Debug: User not found in DB");
         return user;
     } catch (error) {
+        console.error("Auth Debug: Verification failed:", error);
         return null;
     }
 }
