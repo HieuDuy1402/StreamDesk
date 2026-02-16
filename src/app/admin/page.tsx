@@ -17,7 +17,7 @@ interface User {
     createdAt: string;
 }
 
-const API_URL = "http://localhost:5000/api/admin";
+const API_URL = "/api/admin";
 
 export default function AdminPanel() {
     const { user } = useAuth();
@@ -230,7 +230,7 @@ export default function AdminPanel() {
                                                     value={u.role}
                                                     onChange={(e) => handleRoleChange(u._id, e.target.value as "user" | "admin")}
                                                     className="bg-zinc-800 text-white px-3 py-1 rounded border border-zinc-700 text-sm"
-                                                    disabled={u._id === user?._id}
+                                                    disabled={u._id === user?.id}
                                                 >
                                                     <option value="user">User</option>
                                                     <option value="admin">Admin</option>
@@ -255,7 +255,7 @@ export default function AdminPanel() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteUser(u._id)}
-                                                        disabled={u._id === user?._id}
+                                                        disabled={u._id === user?.id}
                                                         className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded border border-red-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                                                     >
                                                         <Trash2 className="h-3 w-3" />
