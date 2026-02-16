@@ -18,14 +18,20 @@ export async function getUserFromSession() {
 
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
-        // console.log("Auth Debug: Token verified for user", payload.userId);
-        if (!payload.userId) {
+        let userId = payload.userId;
+
+        // Handle weird serialization where ObjectID becomes { buffer: ... }
+        if (typeof userId === 'object' && userId !== null && 'toString' in userId) {
+            userId = userId.toString();
+        }
+
+        if (!userId) {
             console.log("Auth Debug: Token missing userId");
             return null;
         }
 
         await dbConnect();
-        const user = await User.findById(payload.userId).select('-password');
+        const user = await User.findById(userId).select('-password');
         if (!user) console.log("Auth Debug: User not found in DB");
         return user;
     } catch (error) {
