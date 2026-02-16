@@ -31,18 +31,27 @@ export async function POST(req: Request) {
         const id = formData.get('id') as string;
         const label = formData.get('label') as string;
         const icon = formData.get('icon') as string;
-        const file = formData.get('file') as File | null;
+        // Client now sends the Blob URL as a string in the 'file' field
+        const fileUrl = formData.get('file') as string | null;
 
         // Check track limit (Exempt Admins)
-        if (file && user.role !== 'admin') {
+        if (fileUrl && user.role !== 'admin') {
             const existingTrack = await Sound.findOne({ id, userId: user._id });
             const isReplacingFile = existingTrack && existingTrack.file;
 
             if (!isReplacingFile) {
                 const trackCount = await Sound.countDocuments({ userId: user._id, file: { $exists: true, $ne: null } });
                 if (trackCount >= user.maxTracks) {
+                    // If we reached limit, we should ideally delete the just-uploaded blob to avoid orphans,
+                    // but the client usually handles this or we rely on Vercel strict limits?
+                    // Actually, if client uploaded it, it's already there. 
+                    // We just won't save the reference. Ideally we delete it.
+                    if (fileUrl.startsWith('http')) {
+                        try { await del(fileUrl); } catch (e) { }
+                    }
+
                     return NextResponse.json({
-                        error: `Max audio tracksReached (${user.maxTracks}). You can still save labels/icons, but cannot upload more audio files.`
+                        error: `Max audio tracks Reached (${user.maxTracks}). You can still save labels/icons, but cannot upload more audio files.`
                     }, { status: 400 });
                 }
             }
@@ -50,11 +59,11 @@ export async function POST(req: Request) {
 
         let updateData: any = { label, icon, userId: user._id };
 
-        // Handle File Upload
-        if (file && file.size > 0) {
+        // Handle File URL
+        if (fileUrl) {
             // Check for existing sound to replace file
             const existingSound = await Sound.findOne({ id, userId: user._id });
-            if (existingSound && existingSound.file) {
+            if (existingSound && existingSound.file && existingSound.file !== fileUrl) {
                 // Delete old file from Vercel Blob
                 try {
                     await del(existingSound.file);
@@ -62,10 +71,7 @@ export async function POST(req: Request) {
                     console.error("Failed to delete old blob:", e);
                 }
             }
-
-            // Upload new file to Vercel Blob
-            const blob = await put(file.name, file, { access: 'public' });
-            updateData.file = blob.url;
+            updateData.file = fileUrl;
         }
 
         // Upsert Sound

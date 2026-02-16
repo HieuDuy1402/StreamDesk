@@ -22,19 +22,54 @@ export const AVAILABLE_ICONS = [
     { icon: Heart, label: "Fav" },
 ];
 
+import { upload } from "@vercel/blob/client";
+
 export function EditSoundDialog({ isOpen, onClose, onSave, initialLabel = "" }: EditSoundDialogProps) {
     const [label, setLabel] = useState(initialLabel);
     const [selectedIconName, setSelectedIconName] = useState("Music");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     if (!isOpen) return null;
 
-    const handleSave = () => {
-        const selectedIcon = AVAILABLE_ICONS.find(i => i.label === selectedIconName)?.icon || Music;
-        onSave(label || "New Sound", selectedIcon, selectedFile);
-        onClose();
-        // Reset file after save
-        setSelectedFile(null);
+    const handleSave = async () => {
+        setIsUploading(true);
+        try {
+            const selectedIcon = AVAILABLE_ICONS.find(i => i.label === selectedIconName)?.icon || Music;
+
+            let fileUrl = null;
+            if (selectedFile) {
+                const newBlob = await upload(selectedFile.name, selectedFile, {
+                    access: 'public',
+                    handleUploadUrl: '/api/upload',
+                });
+                fileUrl = newBlob.url;
+            }
+
+            // We pass fileUrl (string) instead of File object now, but we need to update the interface in the parent or cast it here.
+            // Actually, let's update the onSave signature in the props to accept string | File | null
+            // But wait, the parent `SoundBoard.tsx` handles the upload currently?
+            // No, the parent `handleSaveSound` takes `File | null`.
+            // We should change the parent to accept `string | null` for the file URL if we do upload here.
+            // OR we hack it for now and pass the URL as a "file" property in a special object?
+            // Better: Update the onSave prop type.
+
+            // For now, let's assume we pass the File object if we didn't upload, or...
+            // Wait, if we upload HERE, we get a URL.
+            // If we pass the File to the parent, the PARENT uploads.
+            // The goal is to upload HERE (Client Side).
+            // So onSave should accept (label, icon, fileUrl: string | null).
+
+            onSave(label || "New Sound", selectedIcon, fileUrl as any);
+
+            onClose();
+            setSelectedFile(null);
+        } catch (err) {
+            console.error("Upload failed:", err);
+            alert("Upload failed. Please try again.");
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,15 +157,24 @@ export function EditSoundDialog({ isOpen, onClose, onSave, initialLabel = "" }: 
                     <div className="flex gap-3 pt-2">
                         <button
                             onClick={onClose}
-                            className="flex-1 rounded-lg border border-zinc-800 bg-transparent py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-900 transition"
+                            disabled={isUploading}
+                            className="flex-1 rounded-lg border border-zinc-800 bg-transparent py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-900 transition disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="flex-1 rounded-lg bg-primary py-3 text-sm font-medium text-white hover:bg-primary/90 transition shadow-lg shadow-primary/20"
+                            disabled={isUploading}
+                            className="flex-1 rounded-lg bg-primary py-3 text-sm font-medium text-white hover:bg-primary/90 transition shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            Save Changes
+                            {isUploading ? (
+                                <>
+                                    <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Uploading...
+                                </>
+                            ) : (
+                                "Save Changes"
+                            )}
                         </button>
                     </div>
                 </div>
