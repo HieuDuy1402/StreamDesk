@@ -255,7 +255,7 @@ export default function AdminPanel() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteUser(u._id)}
-                                                        disabled={u._id === user?._id}
+                                                        disabled={u._id === user?.id}
                                                         className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded border border-red-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                                                     >
                                                         <Trash2 className="h-3 w-3" />
