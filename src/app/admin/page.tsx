@@ -230,7 +230,7 @@ export default function AdminPanel() {
                                                     value={u.role}
                                                     onChange={(e) => handleRoleChange(u._id, e.target.value as "user" | "admin")}
                                                     className="bg-zinc-800 text-white px-3 py-1 rounded border border-zinc-700 text-sm"
-                                                    disabled={u._id === user?._id}
+                                                    disabled={u._id === user?.id}
                                                 >
                                                     <option value="user">User</option>
                                                     <option value="admin">Admin</option>
