@@ -17,7 +17,7 @@ interface User {
     createdAt: string;
 }
 
-const API_URL = "http://localhost:5000/api/admin";
+const API_URL = "/api/admin";
 
 export default function AdminPanel() {
     const { user } = useAuth();

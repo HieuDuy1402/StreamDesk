@@ -12,8 +12,7 @@ const createEmptySound = (id: string): SoundItem => ({
     id,
 });
 
-const API_URL = "http://localhost:5000/api/sounds";
-const SERVER_URL = "http://localhost:5000";
+const API_URL = "/api/sounds";
 
 export function SoundBoard() {
     const { user } = useAuth();
@@ -101,7 +100,7 @@ export function SoundBoard() {
                             id: item.id,
                             label: item.label,
                             icon: IconComponent,
-                            file: item.file ? (item.file.startsWith('http') ? item.file : `${SERVER_URL}${item.file}`) : undefined
+                            file: item.file || undefined
                         };
 
                         // Try to find a placeholder with this ID
@@ -338,7 +337,7 @@ export function SoundBoard() {
             }
 
             const data = await res.json();
-            const fileUrl = data.file ? (data.file.startsWith('http') ? data.file : `${SERVER_URL}${data.file}`) : undefined;
+            const fileUrl = data.file;
 
             setSounds((prev) =>
                 prev.map((s) =>
