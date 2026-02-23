@@ -314,18 +314,65 @@ export function SoundBoard() {
         const iconLabel = AVAILABLE_ICONS.find(i => i.icon === icon)?.label || "Music";
 
         try {
-            const formData = new FormData();
-            formData.append("id", editingSoundId);
-            formData.append("label", label);
-            formData.append("icon", iconLabel);
+            let fileUrl = undefined;
+            const existingSound = sounds.find(s => s.id === editingSoundId);
+            const isReplacingFile = !!(existingSound && existingSound.file);
+
             if (file) {
-                formData.append("file", file);
+                // 1. Get Upload Signature
+                const sigRes = await fetch('/api/upload-signature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: editingSoundId, isReplacingFile })
+                });
+
+                if (!sigRes.ok) {
+                    const errorData = await sigRes.json();
+                    alert(errorData.error || "Failed to get upload signature. Track limit reached?");
+                    setEditingSoundId(null);
+                    setIsDialogOpen(false);
+                    return;
+                }
+
+                const { signature, timestamp, cloudName, apiKey } = await sigRes.json();
+
+                // 2. Upload directly to Cloudinary
+                const uploadData = new FormData();
+                uploadData.append('file', file);
+                uploadData.append('api_key', apiKey);
+                uploadData.append('timestamp', timestamp);
+                uploadData.append('signature', signature);
+                uploadData.append('folder', 'streamdesk');
+
+                // Audio must use the 'video' resource_type endpoint
+                const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+                    method: 'POST',
+                    body: uploadData
+                });
+
+                if (!cloudinaryRes.ok) {
+                    alert("Failed to upload audio to Cloudinary.");
+                    setEditingSoundId(null);
+                    setIsDialogOpen(false);
+                    return;
+                }
+
+                const cloudinaryData = await cloudinaryRes.json();
+                fileUrl = cloudinaryData.secure_url;
             }
+
+            // 3. Save metadata to our database
+            const payload = {
+                id: editingSoundId,
+                label,
+                icon: iconLabel,
+                ...(fileUrl && { fileUrl })
+            };
 
             const res = await fetch(API_URL, {
                 method: "POST",
-                body: formData,
-                credentials: 'include'
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
             if (!res.ok) {
@@ -344,12 +391,13 @@ export function SoundBoard() {
             }
 
             const data = await res.json();
-            const fileUrl = data.file;
+            // fileUrl comes from either Cloudinary (if new upload) or database (if unchanged)
+            const finalFileUrl = data.file;
 
             setSounds((prev) =>
                 prev.map((s) =>
                     s.id === editingSoundId
-                        ? { ...s, label, icon, file: fileUrl }
+                        ? { ...s, label, icon, file: finalFileUrl }
                         : s
                 )
             );
