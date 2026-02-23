@@ -38,7 +38,7 @@ const userSchema = new Schema<IUser>({
     },
     maxTracks: {
         type: Number,
-        default: 20
+        default: 10
     }
 }, { timestamps: true });
 
