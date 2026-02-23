@@ -329,8 +329,15 @@ export function SoundBoard() {
             });
 
             if (!res.ok) {
-                const errorData = await res.json();
-                alert(errorData.error || "Failed to save");
+                let errorMessage = "Failed to save";
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorData = await res.json();
+                    errorMessage = errorData.error || errorMessage;
+                } else {
+                    errorMessage = await res.text();
+                }
+                alert(errorMessage);
                 setEditingSoundId(null);
                 setIsDialogOpen(false);
                 return;
